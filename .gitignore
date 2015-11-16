@@ -9,3 +9,6 @@
 
 # Rootfiles
 *.root
+
+# This project
+experiment.txt
