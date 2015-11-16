@@ -3,6 +3,7 @@
 #include <cmath>
 
 #include "TH1.h"
+#include "TH2.h"
 #include "TH3.h"
 #include "TCanvas.h"
 #include "TRandom3.h"
@@ -23,10 +24,10 @@ const double Pi_energy_cm = K_mass/2;
 const double Pi_momentum_mod_cm = sqrt(Pi_energy_cm*Pi_energy_cm - Pi_mass*Pi_mass);
 
 /* Detector coordinates */
-const double z1 /* m */ = 50;
-const double z2 /* m */ = 51;
-const double z3 /* m */ = 60;
-const double z4 /* m */ = 61;
+const double z1 /* m */ = 10000;
+const double z2 /* m */ = 10001;
+const double z3 /* m */ = 10010;
+const double z4 /* m */ = 10011;
 
 /* Detector smearing */
 const double dx /* m */ =  0.01;
@@ -35,6 +36,9 @@ const double dy /* m */ =  0.01;
 /* dp kick - applied at the center of the field region */
 const double p_kick /* GeV */ = 0.01;
 const double z_kick /* m */ = (z2+z3)/2;
+
+/* Plots constants */
+const double hits_bound /* m */ = 100;
 
 const int N_events = 1e5;
 
@@ -109,9 +113,17 @@ int experiment()
     
     TCanvas* canv_Pi_pos = new TCanvas("canv_Pi_pos", "Pi pos", 1000, 600);
     TH3D* histo_Pi_pos = new TH3D("histo_Pi_pos", "Pi pos; GeV; GeV; GeV",
-                                  100,                   0, +K_energy_average,
                                   100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
-                                  100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm);
+                                  100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
+                                  100,                   0, +K_energy_average);
+    
+    TCanvas* canv_hit_p1 = new TCanvas("canv_hit_p1", "Hit pos ch1", 1000, 600);
+    TH2D* histo_hit_p1 = new TH2D("histo_hit_p1", "Hit pos ch1; m; m; N",
+                                  1000, -hits_bound, +hits_bound, 1000, -hits_bound, +hits_bound);
+    
+    TCanvas* canv_hit_p1_smeared = new TCanvas("canv_hit_p1_smeared", "Hit pos ch1 smeared", 1000, 600);
+    TH2D* histo_hit_p1_smeared = new TH2D("histo_hit_p1_smeared", "Hit pos ch1 smeared; m; m; N",
+                                          1000, -hits_bound, +hits_bound, 1000, -hits_bound, +hits_bound);
     
     // Out file
     ofstream outfile;
@@ -152,12 +164,14 @@ int experiment()
         TVector2 hit_n1=chamber_hit(Pi_neg, z1, path);
         TVector2 hit_p2=chamber_hit(Pi_pos, z2, path);
         TVector2 hit_n2=chamber_hit(Pi_neg, z2, path);
+        histo_hit_p1->Fill(hit_p1.X(), hit_p1.Y());
         
         // Apply chamber smearing
         TVector2 hit_p1_smeared = apply_chamber_smearing(hit_p1, dx, dy);
         TVector2 hit_n1_smeared = apply_chamber_smearing(hit_n1, dx, dy);
         TVector2 hit_p2_smeared = apply_chamber_smearing(hit_p2, dx, dy);
         TVector2 hit_n2_smeared = apply_chamber_smearing(hit_n2, dx, dy);
+        histo_hit_p1_smeared->Fill(hit_p1_smeared.X(), hit_p1_smeared.Y());
         
         // The magnetic field is schematized as a kick of magnitude p_kick
         // applied at the center of the magnetic field region (z_kick)
@@ -210,6 +224,12 @@ int experiment()
     
     canv_Pi_pos->cd();
     histo_Pi_pos->Draw();
+        
+    canv_hit_p1->cd();
+    histo_hit_p1->Draw();
+    
+    canv_hit_p1_smeared->cd();
+    histo_hit_p1_smeared->Draw();
     
     return 0;
 }
