@@ -1,4 +1,6 @@
 #include <iostream>
+#include <fstream>
+#include <cmath>
 
 #include "TH1.h"
 #include "TH3.h"
@@ -8,7 +10,7 @@
 #include "TVector3.h"
 #include "TLorentzVector.h"
 
-/* Simulated experiment is a K_L->PiPi decay*/
+/* Simulated experiment is a K_L->PiPi decay (CP violating)*/
 
 const double K_energy_average /*GeV*/ = 100;
 const double K_energy_sigma   /*GeV*/ =  30;
@@ -30,11 +32,25 @@ const double z4 /* m */ = 61;
 const double dx /* m */ =  0.01;
 const double dy /* m */ =  0.01;
 
+/* dp kick - applied at the center of the field region */
+const double p_kick /* GeV */ = 0.01;
+const double z_kick /* m */ = (z2+z3)/2;
+
 const int N_events = 1e5;
 
 TRandom rng;
 
 using namespace std;
+
+ostream& operator<<(ostream& ost, TVector2& vec)
+{
+    return ost << vec.X() << " " << vec.Y();
+}
+
+ostream& operator<<(ostream& ost, TVector3& vec)
+{
+    return ost << vec.X() << " " << vec.Y() << " " << vec.Z();
+}
 
 inline double generate_K_energy()
 {
@@ -58,17 +74,17 @@ inline TVector3 generate_Pi_momentum_cm()
     return TVector3(x, y, z);
 }
 
-inline TVector2 chamber_hit(double z_chamber, double z_start, TVector3 Pi_momentum)
+inline TVector2 chamber_hit(TVector3 Pi_momentum, double z_chamber, double z_start, double x_start=0, double y_start=0)
 {
     double z_travelled = z_chamber - z_start;
     double scale = z_travelled/Pi_momentum.Pz();
-    return TVector2(Pi_momentum.Px()*scale, Pi_momentum.Py()*scale);
+    return TVector2(Pi_momentum.Px()*scale + x_start, Pi_momentum.Py()*scale + y_start);
 }
 
-inline TVector2 apply_chamber_smearing(TVector2& hit, double dx, double dy)
+inline TVector2 apply_chamber_smearing(TVector2 hit, double dx, double dy)
 {
-    double x = rng.Gaus(hit.x(), dx);
-    double y = rng.Gaus(hit.y(), dy);
+    double x = rng.Gaus(hit.X(), dx);
+    double y = rng.Gaus(hit.Y(), dy);
     return TVector2(x, y);
 }
 
@@ -76,6 +92,7 @@ int experiment()
 {
     rng = TRandom3(12345); /* Fixed init */
     
+    // Histograms declaration
     TCanvas* canv_K_energy = new TCanvas("canv_K_energy", "K energy distribution", 1000, 600);
     TH1D* histo_K_energy = new TH1D("histo_K_energy", "K energy distribution; GeV; N",
                                     180, K_energy_average - 3* K_energy_sigma, K_energy_average + 3* K_energy_sigma);
@@ -89,15 +106,18 @@ int experiment()
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm);
-
-    TCanvas* canv_Pi1 = new TCanvas("canv_Pi1", "Pi1", 1000, 600);
-    TH3D* histo_Pi1 = new TH3D("histo_Pi1", "Pi1; GeV; GeV; GeV",
-                                          100,                   0, +K_energy_average,
-                                          100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
-                                          100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm);
+    
+    TCanvas* canv_Pi_pos = new TCanvas("canv_Pi_pos", "Pi pos", 1000, 600);
+    TH3D* histo_Pi_pos = new TH3D("histo_Pi_pos", "Pi pos; GeV; GeV; GeV",
+                                  100,                   0, +K_energy_average,
+                                  100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
+                                  100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm);
+    
+    // Out file
+    ofstream outfile;
+    outfile.open("experiment.txt");
     
     // Main loop
-    
     for (int nev=0; nev<N_events; ++nev) {
         
         // Generate K energy
@@ -113,29 +133,67 @@ int experiment()
         if (path > z1) continue;
         
         // Generate cm dynamic
-        double K_beta_z = sqrt(1-pow(K_mass/K_energy, 2));
+        double K_beta_z = sqrt(1 - pow(K_mass/K_energy, 2));
         TVector3 K_beta = TVector3(0, 0, K_beta_z);
         TVector3 Pi_momentum_cm = generate_Pi_momentum_cm();
         histo_Pi_momentum_cm->Fill(Pi_momentum_cm.Px(), Pi_momentum_cm.Py(), Pi_momentum_cm.Pz());
         
         // Boost to lab frame
-        TLorentzVector Pi1 = TLorentzVector( Pi_momentum_cm, Pi_energy_cm);
-        TLorentzVector Pi2 = TLorentzVector(-Pi_momentum_cm, Pi_energy_cm); // Momentum cons. in cm
-        Pi1.Boost(K_beta);
-        Pi2.Boost(K_beta);
-        histo_Pi1->Fill(Pi1.Px(), Pi1.Py(), Pi1.Pz());
+        TLorentzVector Pi_pos_4v = TLorentzVector( Pi_momentum_cm, Pi_energy_cm);
+        TLorentzVector Pi_neg_4v = TLorentzVector(-Pi_momentum_cm, Pi_energy_cm); // Momentum cons. in cm
+        Pi_pos_4v.Boost(K_beta);
+        Pi_neg_4v.Boost(K_beta);
+        TVector3 Pi_pos = Pi_pos_4v.Vect();
+        TVector3 Pi_neg = Pi_neg_4v.Vect();
+        histo_Pi_pos->Fill(Pi_pos.Px(), Pi_pos.Py(), Pi_pos.Pz());
         
         // Calculate hit points in first two chambers
-        TVector2 hit11=chamber_hit(z1, path, Pi1.Vect());
-        TVector2 hit12=chamber_hit(z1, path, Pi2.Vect());
-        TVector2 hit21=chamber_hit(z2, path, Pi1.Vect());
-        TVector2 hit22=chamber_hit(z2, path, Pi2.Vect());
+        TVector2 hit_p1=chamber_hit(Pi_pos, z1, path);
+        TVector2 hit_n1=chamber_hit(Pi_neg, z1, path);
+        TVector2 hit_p2=chamber_hit(Pi_pos, z2, path);
+        TVector2 hit_n2=chamber_hit(Pi_neg, z2, path);
         
         // Apply chamber smearing
-        apply_chamber_smearing(hit11, dx, dy);
-        apply_chamber_smearing(hit12, dx, dy);
-        apply_chamber_smearing(hit21, dx, dy);
-        apply_chamber_smearing(hit22, dx, dy);
+        TVector2 hit_p1_smeared = apply_chamber_smearing(hit_p1, dx, dy);
+        TVector2 hit_n1_smeared = apply_chamber_smearing(hit_n1, dx, dy);
+        TVector2 hit_p2_smeared = apply_chamber_smearing(hit_p2, dx, dy);
+        TVector2 hit_n2_smeared = apply_chamber_smearing(hit_n2, dx, dy);
+        
+        // The magnetic field is schematized as a kick of magnitude p_kick
+        // applied at the center of the magnetic field region (z_kick)
+        
+        // Find position at kick
+        TVector2 Pi_pos_position_kick = chamber_hit(Pi_pos, z_kick, path);
+        TVector2 Pi_neg_position_kick = chamber_hit(Pi_neg, z_kick, path);
+        TVector3 p_kick_vec = TVector3(p_kick, 0, 0);
+        
+        // Find hits in last two chambers - p_kick is opposite due to charge
+        TVector2 hit_p3=chamber_hit(Pi_pos + p_kick_vec, z3, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
+        TVector2 hit_n3=chamber_hit(Pi_neg - p_kick_vec, z3, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
+        TVector2 hit_p4=chamber_hit(Pi_pos + p_kick_vec, z4, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
+        TVector2 hit_n4=chamber_hit(Pi_neg - p_kick_vec, z4, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
+        
+        // Apply chamber smearing
+        TVector2 hit_p3_smeared = apply_chamber_smearing(hit_p3, dx, dy);
+        TVector2 hit_n3_smeared = apply_chamber_smearing(hit_n3, dx, dy);
+        TVector2 hit_p4_smeared = apply_chamber_smearing(hit_p4, dx, dy);
+        TVector2 hit_n4_smeared = apply_chamber_smearing(hit_n4, dx, dy);
+        
+        
+        // Write to file
+        outfile << hit_p1_smeared << " ";
+        outfile << hit_n1_smeared << " ";
+        outfile << hit_p2_smeared << " ";
+        outfile << hit_n2_smeared << " ";
+        outfile << hit_p3_smeared << " ";
+        outfile << hit_n3_smeared << " ";
+        outfile << hit_p4_smeared << " ";
+        outfile << hit_n4_smeared << " ";
+        outfile << "-"            << " ";
+        outfile << K_energy       << " ";
+        outfile << path           << " ";
+        outfile << Pi_pos         << " ";
+        outfile << Pi_neg         <<endl;
     }
     
     // Histogram drawing
@@ -150,8 +208,8 @@ int experiment()
     canv_Pi_momentum_cm->cd();
     histo_Pi_momentum_cm->Draw();
     
-    canv_Pi1->cd();
-    histo_Pi1->Draw();
+    canv_Pi_pos->cd();
+    histo_Pi_pos->Draw();
     
     return 0;
 }
