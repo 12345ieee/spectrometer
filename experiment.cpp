@@ -28,8 +28,6 @@ const double Pi_momentum_mod_cm = sqrt(Pi_energy_cm*Pi_energy_cm - Pi_mass*Pi_ma
 /* Plots constants */
 const double hits_bound /* m */ = 100;
 
-const int N_events = 1e5;
-
 TRandom rng;
 
 using namespace std;
@@ -80,7 +78,7 @@ inline TVector2 apply_chamber_smearing(TVector2 hit, double dx, double dy)
     return TVector2(x, y);
 }
 
-int experiment()
+int experiment(int N_events = 1e5)
 {
     rng = TRandom3(12345); /* Fixed init */
     
@@ -232,7 +230,9 @@ int experiment()
     return 0;
 }
 
-int main(int, char**)
+int main(int argc, char** argv)
 {
-    return experiment();
+    int N_events = 1e5;
+    if (argc>1) N_events = atoi(argv[1]);
+    return experiment(N_events);
 }
