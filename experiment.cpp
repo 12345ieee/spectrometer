@@ -13,29 +13,30 @@
 
 /* Simulated experiment is a K_L->PiPi decay (CP violating)*/
 
-const double K_energy_average /*GeV*/ = 100;
-const double K_energy_sigma   /*GeV*/ =  30;
-const double K_path_average   /* m */ =  15.34;
-const double K_mass           /*GeV*/ =   0.497611;
+const double K_energy_average /*GeV*/ =  2; // Around the value of Cronin-Fitch experiment
+const double K_energy_sigma   /*GeV*/ =  0.5;
+const double K_path_average   /* m */ = 15.34;
+const double K_mass           /*GeV*/ =  0.497611;
 
-const double Pi_mass          /*GeV*/ =   0.139570; // charged pi
+const double Pi_mass          /*GeV*/ =  0.139570; // charged pi
 
 const double Pi_energy_cm = K_mass/2;
 const double Pi_momentum_mod_cm = sqrt(Pi_energy_cm*Pi_energy_cm - Pi_mass*Pi_mass);
 
 /* Detector coordinates */
-const double z1 /* m */ = 10000;
-const double z2 /* m */ = 10001;
-const double z3 /* m */ = 10010;
-const double z4 /* m */ = 10011;
+const double z1 /* m */ = 200;
+const double z2 /* m */ = 201;
+const double z3 /* m */ = 250;
+const double z4 /* m */ = 251;
 
 /* Detector smearing */
 const double dx /* m */ =  0.01;
 const double dy /* m */ =  0.01;
 
 /* dp kick - applied at the center of the field region */
-const double p_kick /* GeV */ = 0.01;
+const double z_drift /* m */ = z3-z2;
 const double z_kick /* m */ = (z2+z3)/2;
+const double p_kick /* GeV */ = 1e-5*z_drift;
 
 /* Plots constants */
 const double hits_bound /* m */ = 100;
@@ -98,32 +99,36 @@ int experiment()
     
     // Histograms declaration
     TCanvas* canv_K_energy = new TCanvas("canv_K_energy", "K energy distribution", 1000, 600);
-    TH1D* histo_K_energy = new TH1D("histo_K_energy", "K energy distribution; GeV; N",
+    TH1D* histo_K_energy = new TH1D("histo_K_energy", "K energy distribution; E (GeV); N",
                                     180, K_energy_average - 3* K_energy_sigma, K_energy_average + 3* K_energy_sigma);
     
     TCanvas* canv_K_path = new TCanvas("canv_K_path", "K path distribution", 1000, 600);
-    TH1D* histo_K_path = new TH1D("histo_K_path", "K path distribution; m; N",
+    TH1D* histo_K_path = new TH1D("histo_K_path", "K path distribution; Path (m); N",
                                   180, 0, 10*gamma_from_K_energy(K_energy_average)*K_path_average);
     
     TCanvas* canv_Pi_momentum_cm = new TCanvas("canv_Pi_momentum_cm", "Pi momentum cm", 1000, 600);
-    TH3D* histo_Pi_momentum_cm = new TH3D("histo_Pi_momentum_cm", "Pi momentum cm; GeV; GeV; GeV",
+    TH3D* histo_Pi_momentum_cm = new TH3D("histo_Pi_momentum_cm", "Pi momentum cm; Px (GeV); Py (GeV); Pz (GeV)",
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
                                           100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm);
     
     TCanvas* canv_Pi_pos = new TCanvas("canv_Pi_pos", "Pi pos", 1000, 600);
-    TH3D* histo_Pi_pos = new TH3D("histo_Pi_pos", "Pi pos; GeV; GeV; GeV",
+    TH3D* histo_Pi_pos = new TH3D("histo_Pi_pos", "Pi pos; Px (GeV); Py (GeV); Pz (GeV)",
                                   100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
                                   100, -Pi_momentum_mod_cm, +Pi_momentum_mod_cm,
-                                  100,                   0, +K_energy_average);
+                                  100, 0,                   +2*K_energy_average);
     
     TCanvas* canv_hit_p1 = new TCanvas("canv_hit_p1", "Hit pos ch1", 1000, 600);
-    TH2D* histo_hit_p1 = new TH2D("histo_hit_p1", "Hit pos ch1; m; m; N",
-                                  1000, -hits_bound, +hits_bound, 1000, -hits_bound, +hits_bound);
+    TH2D* histo_hit_p1 = new TH2D("histo_hit_p1", "Hit pos ch1; x (m); y (m); N",
+                                  200, -hits_bound, +hits_bound, 200, -hits_bound, +hits_bound);
     
     TCanvas* canv_hit_p1_smeared = new TCanvas("canv_hit_p1_smeared", "Hit pos ch1 smeared", 1000, 600);
-    TH2D* histo_hit_p1_smeared = new TH2D("histo_hit_p1_smeared", "Hit pos ch1 smeared; m; m; N",
-                                          1000, -hits_bound, +hits_bound, 1000, -hits_bound, +hits_bound);
+    TH2D* histo_hit_p1_smeared = new TH2D("histo_hit_p1_smeared", "Hit pos ch1 smeared; x (m); y (m); N",
+                                          200, -hits_bound, +hits_bound, 200, -hits_bound, +hits_bound);
+    
+    TCanvas* canv_hit_p3 = new TCanvas("canv_hit_p13", "Hit pos ch3", 1000, 600);
+    TH2D* histo_hit_p3 = new TH2D("histo_hit_p3", "Hit pos ch3; x (m); y (m); N",
+                                  200, -hits_bound, +hits_bound, 200, -hits_bound, +hits_bound);
     
     // Out file
     ofstream outfile;
@@ -145,12 +150,14 @@ int experiment()
         if (path > z1) continue;
         
         // Generate cm dynamic
-        double K_beta_z = sqrt(1 - pow(K_mass/K_energy, 2));
-        TVector3 K_beta = TVector3(0, 0, K_beta_z);
         TVector3 Pi_momentum_cm = generate_Pi_momentum_cm();
         histo_Pi_momentum_cm->Fill(Pi_momentum_cm.Px(), Pi_momentum_cm.Py(), Pi_momentum_cm.Pz());
         
         // Boost to lab frame
+        double K_beta_z = sqrt(1 - pow(K_mass/K_energy, 2));
+        // double x = K_mass/K_energy;
+        // double K_beta_z = 1 + pow(x, 2)/2 - pow(x, 4)/8 + pow(x, 6)/16;
+        TVector3 K_beta = TVector3(0, 0, K_beta_z);
         TLorentzVector Pi_pos_4v = TLorentzVector( Pi_momentum_cm, Pi_energy_cm);
         TLorentzVector Pi_neg_4v = TLorentzVector(-Pi_momentum_cm, Pi_energy_cm); // Momentum cons. in cm
         Pi_pos_4v.Boost(K_beta);
@@ -186,6 +193,7 @@ int experiment()
         TVector2 hit_n3=chamber_hit(Pi_neg - p_kick_vec, z3, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
         TVector2 hit_p4=chamber_hit(Pi_pos + p_kick_vec, z4, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
         TVector2 hit_n4=chamber_hit(Pi_neg - p_kick_vec, z4, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
+        histo_hit_p3->Fill(hit_p3.X(), hit_p3.Y());
         
         // Apply chamber smearing
         TVector2 hit_p3_smeared = apply_chamber_smearing(hit_p3, dx, dy);
@@ -230,6 +238,9 @@ int experiment()
     
     canv_hit_p1_smeared->cd();
     histo_hit_p1_smeared->Draw();
+    
+    canv_hit_p3->cd();
+    histo_hit_p3->Draw();
     
     return 0;
 }
