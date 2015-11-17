@@ -203,6 +203,7 @@ int experiment()
         
         
         // Write to file
+        outfile << nev            << " ";
         outfile << hit_p1_smeared << " ";
         outfile << hit_n1_smeared << " ";
         outfile << hit_p2_smeared << " ";
@@ -211,7 +212,6 @@ int experiment()
         outfile << hit_n3_smeared << " ";
         outfile << hit_p4_smeared << " ";
         outfile << hit_n4_smeared << " ";
-        outfile << "-"            << " ";
         outfile << K_energy       << " ";
         outfile << path           << " ";
         outfile << Pi_pos         << " ";
