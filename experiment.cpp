@@ -141,7 +141,7 @@ int experiment(int N_events = 1e5)
         // Boost to lab frame
         double K_beta_z = sqrt(1 - pow(K_mass/K_energy, 2));
         // double x = K_mass/K_energy;
-        // double K_beta_z = 1 + pow(x, 2)/2 - pow(x, 4)/8 + pow(x, 6)/16;
+        // double K_beta_z = 1 - pow(x, 2)/2 - pow(x, 4)/8 - pow(x, 6)/16;
         TVector3 K_beta = TVector3(0, 0, K_beta_z);
         TLorentzVector Pi_pos_4v = TLorentzVector( Pi_momentum_cm, Pi_energy_cm);
         TLorentzVector Pi_neg_4v = TLorentzVector(-Pi_momentum_cm, Pi_energy_cm); // Momentum cons. in cm

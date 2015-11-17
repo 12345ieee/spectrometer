@@ -111,14 +111,12 @@ int analysis()
         
         TVector3 momentum_versor_p12 = momentum_versor_from_2hits(z12, hit_p1, hit_p2);
         TVector3 momentum_versor_p34 = momentum_versor_from_2hits(z34, hit_p3, hit_p4);
-        double coeff_p = p_kick * momentum_versor_p34.Py() /
-                        (momentum_versor_p12.Py()*momentum_versor_p34.Px() - momentum_versor_p12.Px()*momentum_versor_p34.Py());
+        double coeff_p = p_kick / (momentum_versor_p34.Px() - momentum_versor_p12.Px());
         TVector3 Pi_pos_reco = coeff_p * momentum_versor_p12;
         
         TVector3 momentum_versor_n12 = momentum_versor_from_2hits(z12, hit_n1, hit_n2);
         TVector3 momentum_versor_n34 = momentum_versor_from_2hits(z34, hit_n3, hit_n4);
-        double coeff_n = p_kick * momentum_versor_n34.Py() /
-                        (momentum_versor_n12.Py()*momentum_versor_n34.Px() - momentum_versor_n12.Px()*momentum_versor_n34.Py());
+        double coeff_n = p_kick / (momentum_versor_n34.Px() - momentum_versor_n12.Px());
         TVector3 Pi_neg_reco = coeff_n * momentum_versor_n12;
         
         cout << Pi_pos << '\n' << Pi_pos_reco << '\n' << endl;
