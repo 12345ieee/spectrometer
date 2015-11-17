@@ -156,6 +156,10 @@ int experiment(int N_events = 1e5)
         TVector2 hit_n1=line_propagation(Pi_neg, z1, path);
         TVector2 hit_p2=line_propagation(Pi_pos, z2, path);
         TVector2 hit_n2=line_propagation(Pi_neg, z2, path);
+        
+        // Cut in detector acceptance (if they are accepted in ch1 they'll be accepted in all other chambers)
+        if ((abs(hit_p1.X()) < xcut && abs(hit_p1.Y()) < ycut) ||
+            (abs(hit_n1.X()) < xcut && abs(hit_n1.Y()) < ycut)) continue;
         histo_hit_p1->Fill(hit_p1.X(), hit_p1.Y());
         
         // Apply chamber smearing
