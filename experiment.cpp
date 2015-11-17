@@ -79,9 +79,9 @@ inline TVector3 generate_Pi_momentum_cm()
     return TVector3(x, y, z);
 }
 
-inline TVector2 chamber_hit(TVector3 Pi_momentum, double z_chamber, double z_start, double x_start=0, double y_start=0)
+inline TVector2 line_propagation(TVector3 Pi_momentum, double z_end, double z_start, double x_start=0, double y_start=0)
 {
-    double z_travelled = z_chamber - z_start;
+    double z_travelled = z_end - z_start;
     double scale = z_travelled/Pi_momentum.Pz();
     return TVector2(Pi_momentum.Px()*scale + x_start, Pi_momentum.Py()*scale + y_start);
 }
@@ -167,10 +167,10 @@ int experiment()
         histo_Pi_pos->Fill(Pi_pos.Px(), Pi_pos.Py(), Pi_pos.Pz());
         
         // Calculate hit points in first two chambers
-        TVector2 hit_p1=chamber_hit(Pi_pos, z1, path);
-        TVector2 hit_n1=chamber_hit(Pi_neg, z1, path);
-        TVector2 hit_p2=chamber_hit(Pi_pos, z2, path);
-        TVector2 hit_n2=chamber_hit(Pi_neg, z2, path);
+        TVector2 hit_p1=line_propagation(Pi_pos, z1, path);
+        TVector2 hit_n1=line_propagation(Pi_neg, z1, path);
+        TVector2 hit_p2=line_propagation(Pi_pos, z2, path);
+        TVector2 hit_n2=line_propagation(Pi_neg, z2, path);
         histo_hit_p1->Fill(hit_p1.X(), hit_p1.Y());
         
         // Apply chamber smearing
@@ -184,15 +184,15 @@ int experiment()
         // applied at the center of the magnetic field region (z_kick)
         
         // Find position at kick
-        TVector2 Pi_pos_position_kick = chamber_hit(Pi_pos, z_kick, path);
-        TVector2 Pi_neg_position_kick = chamber_hit(Pi_neg, z_kick, path);
+        TVector2 Pi_pos_position_kick = line_propagation(Pi_pos, z_kick, path);
+        TVector2 Pi_neg_position_kick = line_propagation(Pi_neg, z_kick, path);
         TVector3 p_kick_vec = TVector3(p_kick, 0, 0);
         
         // Find hits in last two chambers - p_kick is opposite due to charge
-        TVector2 hit_p3=chamber_hit(Pi_pos + p_kick_vec, z3, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
-        TVector2 hit_n3=chamber_hit(Pi_neg - p_kick_vec, z3, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
-        TVector2 hit_p4=chamber_hit(Pi_pos + p_kick_vec, z4, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
-        TVector2 hit_n4=chamber_hit(Pi_neg - p_kick_vec, z4, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
+        TVector2 hit_p3=line_propagation(Pi_pos + p_kick_vec, z3, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
+        TVector2 hit_n3=line_propagation(Pi_neg - p_kick_vec, z3, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
+        TVector2 hit_p4=line_propagation(Pi_pos + p_kick_vec, z4, z_kick, Pi_pos_position_kick.X(), Pi_pos_position_kick.Y());
+        TVector2 hit_n4=line_propagation(Pi_neg - p_kick_vec, z4, z_kick, Pi_neg_position_kick.X(), Pi_neg_position_kick.Y());
         histo_hit_p3->Fill(hit_p3.X(), hit_p3.Y());
         
         // Apply chamber smearing
