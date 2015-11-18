@@ -2,10 +2,10 @@
 #include <fstream>
 #include <cmath>
 
-//~ #include "TH1.h"
+#include "TH1.h"
 //~ #include "TH2.h"
-//~ #include "TH3.h"
-//~ #include "TCanvas.h"
+#include "TH3.h"
+#include "TCanvas.h"
 #include "TVector2.h"
 #include "TVector3.h"
 //~ #include "TLorentzVector.h"
@@ -63,6 +63,18 @@ inline TVector3 momentum_versor_from_2hits(double deltaz, TVector2 hit1, TVector
 int analysis()
 {
     // Histograms declaration
+    TCanvas* canv_Pi_pos_reco = new TCanvas("canv_Pi_pos_reco", "Pi pos", 1000, 600);
+    TH3D* histo_Pi_pos_reco = new TH3D("histo_Pi_pos_reco", "Pi pos reco; Px (GeV); Py (GeV); Pz (GeV)",
+                                       100, -0.3, +0.3, 100, -0.3, +0.3, 100,  0,   +4);
+    
+    TCanvas* canv_delta_Pi_pos_x = new TCanvas("canv_delta_Pi_pos_x", "Delta Pi pos x", 1000, 600);
+    TH1D* histo_delta_Pi_pos_x = new TH1D("histo_delta_Pi_pos_x", "Delta Pi pos x; Dx (GeV); N", 100, -0.05, +0.05);
+    
+    TCanvas* canv_delta_Pi_pos_y = new TCanvas("canv_delta_Pi_pos_y", "Delta Pi pos y", 1000, 600);
+    TH1D* histo_delta_Pi_pos_y = new TH1D("histo_delta_Pi_pos_y", "Delta Pi pos y; Dy (GeV); N", 100, -0.05, +0.05);
+    
+    TCanvas* canv_delta_Pi_pos_z = new TCanvas("canv_delta_Pi_pos_z", "Delta Pi pos z", 1000, 600);
+    TH1D* histo_delta_Pi_pos_z = new TH1D("histo_delta_Pi_pos_z", "Delta Pi pos z; Dz (GeV); N", 100, -0.3,  +0.3);
     
     // In file
     ifstream infile;
@@ -125,9 +137,26 @@ int analysis()
         
         // Cut out events with pz > 1, which are poorly reconstructed due to low delta{x,y}
         if (momentum_z_p > momentum_z_cut || momentum_z_n > momentum_z_cut) continue;
+        histo_Pi_pos_reco->Fill(Pi_pos_reco.Px(), Pi_pos_reco.Py(), Pi_pos_reco.Pz());
+        histo_delta_Pi_pos_x->Fill(Pi_pos_reco.Px() - Pi_pos.Px());
+        histo_delta_Pi_pos_y->Fill(Pi_pos_reco.Py() - Pi_pos.Py());
+        histo_delta_Pi_pos_z->Fill(Pi_pos_reco.Pz() - Pi_pos.Pz());
+
     }
     
     // Histogram drawing
+    
+    canv_Pi_pos_reco->cd();
+    histo_Pi_pos_reco->Draw();
+    
+    canv_delta_Pi_pos_x->cd();
+    histo_delta_Pi_pos_x->Draw();
+    
+    canv_delta_Pi_pos_y->cd();
+    histo_delta_Pi_pos_y->Draw();
+    
+    canv_delta_Pi_pos_z->cd();
+    histo_delta_Pi_pos_z->Draw();
     
     return 0;
 }
