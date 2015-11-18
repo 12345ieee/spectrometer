@@ -214,6 +214,7 @@ int experiment(int N_events = 1e5)
     
     canv_K_path->cd();
     canv_K_path->SetLogy();
+    histo_K_path->Fit("expo");
     histo_K_path->Draw();
     
     canv_Pi_momentum_cm->cd();
@@ -221,7 +222,7 @@ int experiment(int N_events = 1e5)
     
     canv_Pi_pos->cd();
     histo_Pi_pos->Draw();
-        
+    
     canv_hit_p1->cd();
     histo_hit_p1->Draw();
     

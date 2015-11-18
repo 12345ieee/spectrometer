@@ -53,7 +53,7 @@ inline TVector2 line_propagation(TVector3 Pi_momentum, double z_end, double z_st
     return TVector2(Pi_momentum.Px()*scale + x_start, Pi_momentum.Py()*scale + y_start);
 }
 
-inline TVector3 momentum_versor_from_2hits(double deltaz, TVector2 hit1, TVector2 hit2)
+inline TVector3 Pi_versor_reco_from_2hits(double deltaz, TVector2 hit1, TVector2 hit2)
 {
     double px = (hit2.X() - hit1.X())/deltaz;
     double py = (hit2.Y() - hit1.Y())/deltaz;
@@ -68,13 +68,19 @@ int analysis()
                                        100, -0.3, +0.3, 100, -0.3, +0.3, 100,  0,   +4);
     
     TCanvas* canv_delta_Pi_pos_x = new TCanvas("canv_delta_Pi_pos_x", "Delta Pi pos x", 1000, 600);
-    TH1D* histo_delta_Pi_pos_x = new TH1D("histo_delta_Pi_pos_x", "Delta Pi pos x; Dx (GeV); N", 100, -0.05, +0.05);
+    TH1D* histo_delta_Pi_pos_x = new TH1D("histo_delta_Pi_pos_x", "Delta Pi pos x; Dx (GeV); N", 200, -0.05, +0.05);
     
     TCanvas* canv_delta_Pi_pos_y = new TCanvas("canv_delta_Pi_pos_y", "Delta Pi pos y", 1000, 600);
-    TH1D* histo_delta_Pi_pos_y = new TH1D("histo_delta_Pi_pos_y", "Delta Pi pos y; Dy (GeV); N", 100, -0.05, +0.05);
+    TH1D* histo_delta_Pi_pos_y = new TH1D("histo_delta_Pi_pos_y", "Delta Pi pos y; Dy (GeV); N", 200, -0.05, +0.05);
     
     TCanvas* canv_delta_Pi_pos_z = new TCanvas("canv_delta_Pi_pos_z", "Delta Pi pos z", 1000, 600);
-    TH1D* histo_delta_Pi_pos_z = new TH1D("histo_delta_Pi_pos_z", "Delta Pi pos z; Dz (GeV); N", 100, -0.3,  +0.3);
+    TH1D* histo_delta_Pi_pos_z = new TH1D("histo_delta_Pi_pos_z", "Delta Pi pos z; Dz (GeV); N", 200, -0.3,  +0.3);
+    
+    TCanvas* canv_z_path_reco = new TCanvas("canv_z_path_reco", "K path reco distribution", 1000, 600);
+    TH1D* histo_z_path_reco = new TH1D("histo_z_path_reco", "K path reco distribution; Path (m); N", 200, 0, z1);
+    
+    TCanvas* canv_delta_z_path = new TCanvas("canv_delta_z_path", "Delta K path distribution", 1000, 600);
+    TH1D* histo_delta_z_path = new TH1D("histo_delta_z_path", "Delta K path distribution; Path (m); N", 200, -0.8, 0.8);
     
     // In file
     ifstream infile;
@@ -125,15 +131,15 @@ int analysis()
         const double z12 = z2 - z1;
         const double z34 = z4 - z3;
         
-        TVector3 momentum_versor_p12 = momentum_versor_from_2hits(z12, hit_p1, hit_p2);
-        TVector3 momentum_versor_p34 = momentum_versor_from_2hits(z34, hit_p3, hit_p4);
-        double momentum_z_p = p_kick / (momentum_versor_p34.Px() - momentum_versor_p12.Px());
-        TVector3 Pi_pos_reco = momentum_z_p * momentum_versor_p12;
+        TVector3 Pi_versor_reco_p12 = Pi_versor_reco_from_2hits(z12, hit_p1, hit_p2);
+        TVector3 Pi_versor_reco_p34 = Pi_versor_reco_from_2hits(z34, hit_p3, hit_p4);
+        double momentum_z_p = p_kick / (Pi_versor_reco_p34.Px() - Pi_versor_reco_p12.Px());
+        TVector3 Pi_pos_reco = momentum_z_p * Pi_versor_reco_p12;
         
-        TVector3 momentum_versor_n12 = momentum_versor_from_2hits(z12, hit_n1, hit_n2);
-        TVector3 momentum_versor_n34 = momentum_versor_from_2hits(z34, hit_n3, hit_n4);
-        double momentum_z_n = - p_kick / (momentum_versor_n34.Px() - momentum_versor_n12.Px());
-        TVector3 Pi_neg_reco = momentum_z_n * momentum_versor_n12;
+        TVector3 Pi_versor_reco_n12 = Pi_versor_reco_from_2hits(z12, hit_n1, hit_n2);
+        TVector3 Pi_versor_reco_n34 = Pi_versor_reco_from_2hits(z34, hit_n3, hit_n4);
+        double momentum_z_n = - p_kick / (Pi_versor_reco_n34.Px() - Pi_versor_reco_n12.Px());
+        TVector3 Pi_neg_reco = momentum_z_n * Pi_versor_reco_n12;
         
         // Cut out events with pz > 1, which are poorly reconstructed due to low delta{x,y}
         if (momentum_z_p > momentum_z_cut || momentum_z_n > momentum_z_cut) continue;
@@ -141,6 +147,19 @@ int analysis()
         histo_delta_Pi_pos_x->Fill(Pi_pos_reco.Px() - Pi_pos.Px());
         histo_delta_Pi_pos_y->Fill(Pi_pos_reco.Py() - Pi_pos.Py());
         histo_delta_Pi_pos_z->Fill(Pi_pos_reco.Pz() - Pi_pos.Pz());
+        
+        // Compute the best approximation of the decay point
+        // The point is forced to lay on the z axis and computed minimizing
+        // chi2(zP) = d(P, track_p)^2 + d(P, track_n)^2
+        
+        // FIXME: the exact analytical solution of the problem is used
+        // may want to use a numerical method
+        double mod3_p = Pi_versor_reco_p12.Mag2();
+        double mod3_n = Pi_versor_reco_n12.Mag2();
+        double z_path_reco = z1 - (mod3_n*Pi_versor_reco_p12.XYvector()*hit_p1 + mod3_p*Pi_versor_reco_n12.XYvector()*hit_n1)/
+                                  (mod3_n*Pi_versor_reco_p12.XYvector().Mod2() + mod3_p*Pi_versor_reco_n12.XYvector().Mod2());
+        histo_z_path_reco->Fill(z_path_reco);
+        histo_delta_z_path->Fill(z_path_reco - path);
 
     }
     
@@ -157,6 +176,14 @@ int analysis()
     
     canv_delta_Pi_pos_z->cd();
     histo_delta_Pi_pos_z->Draw();
+    
+    canv_z_path_reco->cd();
+    canv_z_path_reco->SetLogy();
+    histo_z_path_reco->Fit("expo");
+    histo_z_path_reco->Draw();
+    
+    canv_delta_z_path->cd();
+    histo_delta_z_path->Draw();
     
     return 0;
 }
