@@ -85,7 +85,7 @@ int experiment(int N_events = 1e5)
     // Histograms declaration
     TCanvas* canv_K_energy = new TCanvas("canv_K_energy", "K energy distribution", 1000, 600);
     TH1D* histo_K_energy = new TH1D("histo_K_energy", "K energy distribution; E (GeV); N",
-                                    180, K_energy_average - 3* K_energy_sigma, K_energy_average + 3* K_energy_sigma);
+                                    200, K_mass, K_energy_average + 3* K_energy_sigma);
     
     TCanvas* canv_K_path = new TCanvas("canv_K_path", "K path distribution", 1000, 600);
     TH1D* histo_K_path = new TH1D("histo_K_path", "K path distribution; Path (m); N",
@@ -214,7 +214,6 @@ int experiment(int N_events = 1e5)
     
     canv_K_path->cd();
     canv_K_path->SetLogy();
-    histo_K_path->Fit("expo");
     histo_K_path->Draw();
     
     canv_Pi_momentum_cm->cd();
