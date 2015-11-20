@@ -8,9 +8,10 @@
 #include "TCanvas.h"
 #include "TVector2.h"
 #include "TVector3.h"
-//~ #include "TLorentzVector.h"
+#include "TFitResult.h"
 
 #include "detector.hpp"
+#include "vectors.hpp"
 
 /* Simulated experiment is a K_L->PiPi decay (CP violating)*/
 
@@ -19,32 +20,6 @@ const double Pi_mass        /*GeV*/ = 0.139570; // charged pi
 const double momentum_z_cut /*GeV*/ = 1;
 
 using namespace std;
-
-ostream& operator<<(ostream& ost, TVector2& vec)
-{
-    return ost << vec.X() << " " << vec.Y();
-}
-
-ostream& operator<<(ostream& ost, TVector3& vec)
-{
-    return ost << vec.X() << " " << vec.Y() << " " << vec.Z();
-}
-
-istream& operator>>(istream& ist, TVector2& vec)
-{
-    double x, y;
-    ist >> x >> y;
-    vec = TVector2(x, y);
-    return ist;
-}
-
-istream& operator>>(istream& ist, TVector3& vec)
-{
-    double x, y, z;
-    ist >> x >> y >> z;
-    vec = TVector3(x, y, z);
-    return ist;
-}
 
 inline TVector2 line_propagation(TVector3 Pi_momentum, double z_end, double z_start, double x_start=0, double y_start=0)
 {
@@ -90,6 +65,10 @@ int analysis()
     
     TCanvas* canv_K_mass_reco = new TCanvas("canv_K_mass_reco", "K mass reco distribution", 1000, 600);
     TH1D* histo_K_mass_reco = new TH1D("histo_K_mass_reco", "K mass reco distribution; E (GeV); N", 200, 0.4, 0.6);
+    
+    TCanvas* canv_K_lifetime_reco = new TCanvas("canv_K_lifetime_reco", "K lifetime reco distribution", 1000, 600);
+    TH1D* histo_K_lifetime_reco = new TH1D("histo_K_lifetime_reco", "K lifetime reco distribution; Lifetime (ns); N",
+                                      200, 0, z1/c);
     
     // In file
     ifstream infile;
@@ -137,8 +116,6 @@ int analysis()
         // Derivation of initial momentum
         // Uses analytical formulas, information contained in y3,y4 is not used,
         // could be used to over-constrain Py
-        const double z12 = z2 - z1;
-        const double z34 = z4 - z3;
         
         TVector3 Pi_versor_reco_p12 = Pi_versor_reco_from_2hits(z12, hit_p1, hit_p2);
         TVector3 Pi_versor_reco_p34 = Pi_versor_reco_from_2hits(z34, hit_p3, hit_p4);
@@ -180,7 +157,12 @@ int analysis()
         
         double K_mass_reco = sqrt(2*Pi_mass*Pi_mass + 2*Pi_pos_energy_reco*Pi_neg_energy_reco - 2*Pi_pos_reco*Pi_neg_reco);
         histo_K_mass_reco->Fill(K_mass_reco);
+        
+        // Find lifetime/mass from path and energy
+        double K_lifetime_mass_reco = z_path_reco/K_energy_reco/c;
+        histo_K_lifetime_reco->Fill(K_lifetime_mass_reco);
     }
+    infile.close();
     
     // Histogram drawing
     
@@ -210,8 +192,19 @@ int analysis()
     histo_delta_K_energy->Draw();
     
     canv_K_mass_reco->cd();
-    histo_K_mass_reco->Fit("gaus");
+    TFitResultPtr res_fit_K_mass = histo_K_mass_reco->Fit("gaus", "S");
     histo_K_mass_reco->Draw();
+    
+    canv_K_lifetime_reco->cd();
+    canv_K_lifetime_reco->SetLogy();
+    TFitResultPtr res_fit_K_lifetime = histo_K_lifetime_reco->Fit("expo", "SL");
+    histo_K_lifetime_reco->Draw();
+    
+    // Find correct lifetime, dividing by the mass
+    double K_mass_reco = res_fit_K_mass->Parameter(1);
+    double slope = res_fit_K_lifetime->Parameter(1);
+    double lifetime = -K_mass_reco/slope;
+    cout << "K lifetime: " << lifetime << endl;
     
     return 0;
 }

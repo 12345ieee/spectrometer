@@ -12,6 +12,7 @@
 #include "TLorentzVector.h"
 
 #include "detector.hpp"
+#include "vectors.hpp"
 
 /* Simulated experiment is a K_L->PiPi decay (CP violating)*/
 
@@ -19,7 +20,6 @@ const double K_energy_average /*GeV*/ =  2; // Around the value of Cronin-Fitch 
 const double K_energy_sigma   /*GeV*/ =  0.5;
 const double K_path_average   /* m */ = 15.34;
 const double K_mass           /*GeV*/ =  0.497611;
-const double c             /* m/ns */ =  0.3;
 
 const double Pi_mass          /*GeV*/ =  0.139570; // charged pi
 
@@ -32,16 +32,6 @@ const double hits_bound /* m */ = 100;
 TRandom rng;
 
 using namespace std;
-
-ostream& operator<<(ostream& ost, TVector2& vec)
-{
-    return ost << vec.X() << " " << vec.Y();
-}
-
-ostream& operator<<(ostream& ost, TVector3& vec)
-{
-    return ost << vec.X() << " " << vec.Y() << " " << vec.Z();
-}
 
 inline double generate_K_energy()
 {
@@ -212,6 +202,7 @@ int experiment(int N_events = 1e5)
         outfile << Pi_pos         << " ";
         outfile << Pi_neg         <<endl;
     }
+    outfile.close();
     
     // Histogram drawing
     
