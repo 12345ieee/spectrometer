@@ -19,6 +19,7 @@ const double K_energy_average /*GeV*/ =  2; // Around the value of Cronin-Fitch 
 const double K_energy_sigma   /*GeV*/ =  0.5;
 const double K_path_average   /* m */ = 15.34;
 const double K_mass           /*GeV*/ =  0.497611;
+const double c             /* m/ns */ =  0.3;
 
 const double Pi_mass          /*GeV*/ =  0.139570; // charged pi
 
@@ -87,9 +88,13 @@ int experiment(int N_events = 1e5)
     TH1D* histo_K_energy = new TH1D("histo_K_energy", "K energy distribution; E (GeV); N",
                                     200, K_mass, K_energy_average + 3* K_energy_sigma);
     
+    TCanvas* canv_K_lifetime = new TCanvas("canv_K_lifetime", "K lifetime distribution", 1000, 600);
+    TH1D* histo_K_lifetime = new TH1D("histo_K_lifetime", "K lifetime distribution; Lifetime (ns); N",
+                                      200, 0, 10*K_path_average/c);
+    
     TCanvas* canv_K_path = new TCanvas("canv_K_path", "K path distribution", 1000, 600);
     TH1D* histo_K_path = new TH1D("histo_K_path", "K path distribution; Path (m); N",
-                                  180, 0, 10*gamma_from_K_energy(K_energy_average)*K_path_average);
+                                  200, 0, 10*gamma_from_K_energy(K_energy_average)*K_path_average);
     
     TCanvas* canv_Pi_momentum_cm = new TCanvas("canv_Pi_momentum_cm", "Pi momentum cm", 1000, 600);
     TH3D* histo_Pi_momentum_cm = new TH3D("histo_Pi_momentum_cm", "Pi momentum cm; Px (GeV); Py (GeV); Pz (GeV)",
@@ -128,6 +133,7 @@ int experiment(int N_events = 1e5)
         
         // Generate K path
         double path_cm = generate_K_path();
+        histo_K_lifetime->Fill(path_cm/c);
         double path = gamma_from_K_energy(K_energy)*path_cm;
         histo_K_path->Fill(path);
         
@@ -211,6 +217,11 @@ int experiment(int N_events = 1e5)
     
     canv_K_energy->cd();
     histo_K_energy->Draw();
+    
+    canv_K_lifetime->cd();
+    canv_K_lifetime->SetLogy();
+    histo_K_lifetime->Fit("expo");
+    histo_K_lifetime->Draw();
     
     canv_K_path->cd();
     canv_K_path->SetLogy();
